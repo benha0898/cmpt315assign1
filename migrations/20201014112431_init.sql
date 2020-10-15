@@ -9,8 +9,8 @@ CREATE TABLE posts (
        title text DEFAULT "untitled",
        text text NOT NULL,
        public BOOLEAN NOT NULL CHECK (public IN (0,1)),
-       read_link text,
-       write_link text,
+       read_id INTEGER UNIQUE,
+       write_id INTEGER UNIQUE,
        reported BOOLEAN NOT NULL CHECK (public IN (0,1)) DEFAULT 0,
        report_reason text,
        FOREIGN KEY (creator) REFERENCES users(username));

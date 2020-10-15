@@ -21,16 +21,16 @@ import (
 )
 
 // post represents the data stored in a post
-type getPostsResponse struct {
-	Creator string `db:"creator"`
-	Title   string `db:"title"`
-	Text    string `db:"text"`
-}
-type createPostRequest struct {
-	Creator string `json:"creator"`
-	Title   string `json:"title"`
-	Text    string `json:"text"`
-	Public  bool   `json:"public"`
+type post struct {
+	ID int `db:"-"` `json:"-"`
+	Creator string `db:"creator"` `json:"creator"`
+	Title string `db:"title"` `json:"title"`
+	Text string `db:"text"` `json:"text"`
+	Public bool `db:"-"` `json:"public"`
+	ReadID string `db:"read_id"` `json:"-"`
+	WriteID string `db:"write_id, omitempty"` `json:"-"`
+	Reported bool `db:"-"` `json:"-"`
+	report_reason string `db:"-"` `json:"-"`
 }
 
 var db *sqlx.DB
@@ -102,7 +102,7 @@ func login() string {
 // Get all public posts
 // Allows for filtering and sorting by creator and title, and pagination
 func getPosts(w http.ResponseWriter, r *http.Request) {
-	posts := []getPostsResponse{}
+	posts := []post{}
 
 	queryString := "Select creator, title, text FROM posts WHERE public = 1"
 	args := []interface{}{}
@@ -166,7 +166,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func createPost(w http.ResponseWriter, r *http.Request) {
-	var newPost createPostRequest
+	var newPost post
 
 	// Decode the request's body
 	decoder := json.NewDecoder(r.Body)
@@ -191,4 +191,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Printf("%d row(s) created.\n", rowsAffected)
+
+	// Create write & read IDs
+	
 }
