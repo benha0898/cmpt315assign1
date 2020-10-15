@@ -1,0 +1,15 @@
+# -*- restclient -*-
+
+# Create Post
+#POST http://localhost:8123/api/v1/posts
+#Content-type: application/json
+#
+#{
+#"creator": "chris",
+#"title": "my 2nd post",
+#"text": "this is my 2nd post.",
+#"public": true
+#}
+
+# Get Posts
+GET http://localhost:8123/api/v1/posts
