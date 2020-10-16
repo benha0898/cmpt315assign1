@@ -110,6 +110,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 		if pageInt, err := strconv.Atoi(page[0]); err != nil {
 			fmt.Println(err)
 			http.Error(w, err.Error(), 400)
+			return
 		} else {
 			currentPage = pageInt
 		}
@@ -122,22 +123,33 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	err := db.Select(&posts, queryString, args...)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	} else {
-		// Configure response
-		w.Header().Set("Content-type", "application/json")
-		envelope := map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"total_count": len(posts),
-				"total_pages": int(math.Ceil(float64(len(posts)) / float64(pageLimit))),
-				"page":        currentPage,
-				"per_page":    pageLimit,
-			},
-			"results": posts,
-		}
-
-		// Encode posts into JSON
-		json.NewEncoder(w).Encode(envelope)
+		return
 	}
+
+	// Get specified page from posts
+	firstOfPage := (currentPage - 1) * pageLimit // e.g. Page 1 starts from index 0
+	lastOfPage := currentPage * pageLimit        // e.g. Page 1 ends before index 20
+	if firstOfPage >= len(posts) {               // If first of page is beyond posts' range, return empty array
+		posts = []post{}
+	} else if lastOfPage > len(posts) { // If last of page is beyond posts' range, only take up to last item
+		posts = posts[firstOfPage:]
+	} else {
+		posts = posts[firstOfPage:lastOfPage]
+	}
+
+	// Configure response
+	w.Header().Set("Content-type", "application/json")
+	envelope := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"total_count": len(posts),
+			"total_pages": int(math.Ceil(float64(len(posts)) / float64(pageLimit))),
+			"page":        currentPage,
+			"per_page":    pageLimit,
+		},
+		"results": posts,
+	}
+	// Encode posts into JSON
+	json.NewEncoder(w).Encode(envelope)
 
 }
 
