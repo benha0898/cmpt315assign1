@@ -62,6 +62,7 @@ func main() {
 	r.Path("/api/v1/posts/{id:[0-9]+}/report").Methods("POST").HandlerFunc(reportPost)
 	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("PUT").HandlerFunc(updatePost)
 	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("DELETE").HandlerFunc(deletePost)
+	r.PathPrefix("/").HandlerFunc(catchAllHandlerFunc)
 
 	fmt.Printf("listen to port %v...\n", httpPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), r))
@@ -401,4 +402,12 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Printf("%d row(s) deleted.\n", rowsAffected)
+}
+
+func catchAllHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	// Log request
+	logRequest(w, r)
+
+	http.Error(w, "Not Found", http.StatusNotFound)
+	return
 }
