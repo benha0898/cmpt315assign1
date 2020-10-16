@@ -59,6 +59,7 @@ func main() {
 	r.Path("/api/v1/posts").Methods("GET").HandlerFunc(getPosts)
 	r.Path("/api/v1/posts").Methods("POST").HandlerFunc(createPost)
 	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("GET").HandlerFunc(getPostById)
+	r.Path("/api/v1/posts/{id:[0-9]+}/report").Methods("POST").HandlerFunc(reportPost)
 
 	fmt.Printf("listen to port %v...\n", httpPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), r))
@@ -76,7 +77,7 @@ func connectToDB() (*sqlx.DB, error) {
 func getPosts(w http.ResponseWriter, r *http.Request) {
 	posts := []post{}
 
-	queryString := "Select title, read_id FROM posts WHERE public = 1"
+	queryString := "Select title, read_id FROM posts WHERE public = 1 AND reported = 0"
 	args := []interface{}{}
 
 	// Get query parameters
@@ -209,13 +210,13 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, "Invalid post id", 400)
+		http.Error(w, "Bad request", 400)
 		return
 	}
 
 	// Find id
 	var result post
-	queryString := "SELECT title, text, public, read_id, write_id FROM posts where read_id = $1 or write_id = $1;"
+	queryString := `SELECT title, text, public, read_id, write_id FROM posts where read_id = $1 or write_id = $1;`
 	err = db.Get(&result, queryString, id)
 
 	if err != nil {
@@ -250,4 +251,38 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 	}
 
+}
+
+// Report a post
+// Take in a reason (string), then store it in the reported post
+func reportPost(w http.ResponseWriter, r *http.Request) {
+	// Get id from path variables
+	id, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "Bad request", 400)
+		return
+	}
+
+	// Decode the request's body to get report reason
+	var reason struct{ reason string }
+	err = json.NewDecoder(r.Body).Decode(&reason)
+
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+	}
+
+	// Add report reason to post, and set reported to true
+	queryString := `UPDATE posts SET reported = 1, report_reason = $1 WHERE read_id = $2`
+	result, err := db.Exec(queryString, reason.reason, id)
+
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%d row(s) updated.\n", rowsAffected)
 }
