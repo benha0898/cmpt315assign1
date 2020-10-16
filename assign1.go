@@ -74,11 +74,26 @@ func connectToDB() (*sqlx.DB, error) {
 	return database, err
 }
 
+// Log a request
+func logRequest(w http.ResponseWriter, r *http.Request) {
+	queryString := `INSERT INTO logs (method, uri) VALUES ($1, $2);`
+	_, err := db.Exec(queryString, r.Method, r.RequestURI)
+
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+}
+
 // Get all public posts
 // Allow for filtering and sorting by creator and title, and pagination
 func getPosts(w http.ResponseWriter, r *http.Request) {
+	// Log request
+	logRequest(w, r)
+
 	posts := []post{}
 
+	// Build query string
 	queryString := "Select title, read_id FROM posts WHERE public = 1 AND reported = 0"
 	args := []interface{}{}
 
@@ -91,7 +106,6 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	}
 	// Sorting by title
 	if sort, exists := urlQuery["sort"]; exists {
-		fmt.Println(sort[0])
 		if strings.EqualFold(sort[0], "title") || strings.EqualFold(sort[0], "title_desc") {
 			queryString += fmt.Sprintf(" ORDER BY title")
 			if sort[0] == "title_desc" {
@@ -118,7 +132,6 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 
 	// Execute query and store resulted rows in posts
 	queryString += ";"
-	fmt.Println(queryString)
 
 	err := db.Select(&posts, queryString, args...)
 	if err != nil {
@@ -156,6 +169,9 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 // Create a new post
 // Take in title (string), text (string), and public (bool) from POST request
 func createPost(w http.ResponseWriter, r *http.Request) {
+	// Log request
+	logRequest(w, r)
+
 	var newPost post
 
 	// Decode the request's body
@@ -185,15 +201,12 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		readID = rand.Intn(10000)
 		writeID = rand.Intn(1000)
 		// Check if readID = writeID
-		fmt.Printf("Check if readId = writeID. read = %d. write = %d\n", readID, writeID)
 		if readID == writeID {
 			continue
 		}
 		// Check if readID and writeID already exists
-		fmt.Println("Check if readId and writeID already exists")
 		readIndex := sort.Search(n, func(i int) bool { return existingIDs[i] >= readID })
 		writeIndex := sort.Search(n, func(i int) bool { return existingIDs[i] >= writeID })
-		fmt.Printf("readIndex = %d. writeIndex = %d\n", readIndex, writeIndex)
 
 		if (readIndex < n && existingIDs[readIndex] == readID) || (writeIndex < n && existingIDs[writeIndex] == writeID) {
 			continue
@@ -221,6 +234,9 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 // If it's a read --> Return text, title, and report link
 // If it's a write --> Return text, title, public, read and write links, update and delete links
 func getPostById(w http.ResponseWriter, r *http.Request) {
+	// Log request
+	logRequest(w, r)
+
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
@@ -270,6 +286,9 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 // Report a post
 // Take in a reason (string), then store it in the reported post
 func reportPost(w http.ResponseWriter, r *http.Request) {
+	// Log request
+	logRequest(w, r)
+
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
@@ -305,6 +324,9 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 // Update a Post
 // Take in new title (string), text (string), and public (bool)
 func updatePost(w http.ResponseWriter, r *http.Request) {
+	// Log request
+	logRequest(w, r)
+
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
@@ -320,11 +342,6 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 		return
 	}
-
-	fmt.Println(updatedPost.Title)
-	fmt.Println(updatedPost.Text)
-	fmt.Println(updatedPost.Public)
-	fmt.Println(id)
 
 	// Build query string
 	queryString := `UPDATE posts SET id = id`
@@ -344,8 +361,6 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	queryString += " WHERE write_id = ?"
 	args = append(args, id)
 
-	fmt.Println(queryString)
-
 	// Execute query to update post
 	result, err := db.Exec(queryString, args...)
 	if err != nil {
@@ -362,6 +377,9 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 
 // Delete a Post
 func deletePost(w http.ResponseWriter, r *http.Request) {
+	// Log request
+	logRequest(w, r)
+
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {

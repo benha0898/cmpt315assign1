@@ -12,7 +12,8 @@ CREATE TABLE posts (
 CREATE TABLE logs (
        id INTEGER PRIMARY KEY,
        timestamp DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
-       message text);
+       method text,
+       uri text);
 -- +goose StatementEnd
 
 -- +goose Down
