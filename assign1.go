@@ -26,7 +26,7 @@ import (
 // post represents the data stored in a post
 type post struct {
 	ID            int    `db:"-" json:"-"`
-	Title         string `db:"title" json:"title"`
+	Title         string `db:"title" json:"title,omitempty"`
 	Text          string `db:"text,omitempty" json:"text,omitempty"`
 	Public        *bool  `db:"public,omitempty" json:"public,omitempty"`
 	ReadID        int    `db:"read_id" json:"read_id,omitempty"`
@@ -60,6 +60,8 @@ func main() {
 	r.Path("/api/v1/posts").Methods("POST").HandlerFunc(createPost)
 	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("GET").HandlerFunc(getPostById)
 	r.Path("/api/v1/posts/{id:[0-9]+}/report").Methods("POST").HandlerFunc(reportPost)
+	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("PUT").HandlerFunc(updatePost)
+	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("DELETE").HandlerFunc(deletePost)
 
 	fmt.Printf("listen to port %v...\n", httpPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), r))
@@ -181,7 +183,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		writeIndex := sort.Search(n, func(i int) bool { return existingIDs[i] >= writeID })
 		fmt.Printf("readIndex = %d. writeIndex = %d\n", readIndex, writeIndex)
 
-		if existingIDs[readIndex] == readID || existingIDs[writeIndex] == writeID {
+		if (readIndex < n && existingIDs[readIndex] == readID) || (writeIndex < n && existingIDs[writeIndex] == writeID) {
 			continue
 		}
 		unique = true
@@ -269,6 +271,7 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, err.Error(), 400)
+		return
 	}
 
 	// Add report reason to post, and set reported to true
@@ -285,4 +288,87 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Printf("%d row(s) updated.\n", rowsAffected)
+}
+
+// Update a Post
+// Take in new title (string), text (string), and public (bool)
+func updatePost(w http.ResponseWriter, r *http.Request) {
+	// Get id from path variables
+	id, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "Bad request", 400)
+		return
+	}
+
+	// Decode the request's body to get update info
+	var updatedPost post
+	err = json.NewDecoder(r.Body).Decode(&updatedPost)
+
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	fmt.Println(updatedPost.Title)
+	fmt.Println(updatedPost.Text)
+	fmt.Println(updatedPost.Public)
+	fmt.Println(id)
+
+	// Build query string
+	queryString := `UPDATE posts SET id = id`
+	args := []interface{}{}
+	if updatedPost.Title != "" {
+		queryString += ", title = ?"
+		args = append(args, updatedPost.Title)
+	}
+	if updatedPost.Text != "" {
+		queryString += ", text = ?"
+		args = append(args, updatedPost.Text)
+	}
+	if updatedPost.Public != nil {
+		queryString += ", public = ?"
+		args = append(args, updatedPost.Public)
+	}
+	queryString += " WHERE write_id = ?"
+	args = append(args, id)
+
+	fmt.Println(queryString)
+
+	// Execute query to update post
+	result, err := db.Exec(queryString, args...)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%d row(s) updated.\n", rowsAffected)
+}
+
+// Delete a Post
+func deletePost(w http.ResponseWriter, r *http.Request) {
+	// Get id from path variables
+	id, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "Bad request", 400)
+		return
+	}
+
+	// Execute query to delete post
+	queryString := `DELETE FROM posts WHERE write_id = $1`
+	result, err := db.Exec(queryString, id)
+
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%d row(s) deleted.\n", rowsAffected)
 }

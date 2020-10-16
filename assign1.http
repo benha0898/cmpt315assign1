@@ -5,10 +5,57 @@ POST http://localhost:8123/api/v1/posts
 Content-type: application/json
 
 {
-"title": "my 6th post",
-"text": "this is my 6th post.",
+"title": "my 7th post",
+"text": "this is my 7th post.",
 "public": true
 }
 
 # Get Posts
-GET http://localhost:8123/api/v1/posts/808
+GET http://localhost:8123/api/v1/posts
+
+# Get Posts with title filtering
+GET http://localhost:8123/api/v1/posts?title=hello
+
+# Get Posts with sorting
+GET http://localhost:8123/api/v1/posts?sort=title
+
+# Get Posts with sorting in desc order
+GET http://localhost:8123/api/v1/posts?sort=title_desc
+
+# Get Posts with pagination
+GET http://localhost:8123/api/v1/posts?page=2
+
+# Get Read-Only Link
+GET http://localhost:8123/api/v1/posts/8755
+
+# Get Admin Link
+GET http://localhost:8123/api/v1/posts/791
+
+# Report a Post
+POST http://localhost:8123/api/v1/posts/8081/report
+Content-type: application/json
+
+{
+"reason": "inappropriate content"
+}
+
+# Update a Post with only title
+PUT http://localhost:8123/api/v1/posts/791
+Content-type: application/json
+
+{
+"title": "New Title!"
+}
+
+# Update a Post with title, text, and public
+PUT http://localhost:8123/api/v1/posts/791
+Content-type: application/json
+
+{
+"title": "New Title Again!",
+"text": "New Text!",
+"public": false
+}
+
+# Delete a Post
+DELETE http://localhost:8123/api/v1/posts/791
