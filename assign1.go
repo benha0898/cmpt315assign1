@@ -29,8 +29,8 @@ type post struct {
 	Title         string `db:"title" json:"title"`
 	Text          string `db:"text,omitempty" json:"text,omitempty"`
 	Public        *bool  `db:"public,omitempty" json:"public,omitempty"`
-	ReadID        string `db:"read_id" json:"read_id,omitempty"`
-	WriteID       string `db:"write_id,omitempty" json:"write_id,omitempty"`
+	ReadID        int    `db:"read_id" json:"read_id,omitempty"`
+	WriteID       int    `db:"write_id,omitempty" json:"write_id,omitempty"`
 	Reported      bool   `db:"-" json:"-"`
 	report_reason string `db:"-" json:"-"`
 }
@@ -129,7 +129,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 				"page":        currentPage,
 				"per_page":    pageLimit,
 			},
-			"posts": posts,
+			"results": posts,
 		}
 
 		// Encode posts into JSON
@@ -204,7 +204,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 
 // Get a post by its read or write ID
 // If it's a read --> Return text, title, and report link
-// If it's a write --> Return text, title, read and write links, update and delete links
+// If it's a write --> Return text, title, public, read and write links, update and delete links
 func getPostById(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
@@ -219,8 +219,35 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 	err = db.Get(&result, queryString, id)
 
 	if err != nil {
-		http.Error(w, "Cannot execute query", 500)
+		http.Error(w, "Invalid post id", 400)
 		return
+	}
+
+	// If id is a read
+	if result.ReadID == id {
+		// Return title, text, and report link
+		w.Header().Set("Content-type", "application/json")
+		response := map[string]interface{}{
+			"post_content": map[string]interface{}{
+				"title": result.Title,
+				"text":  result.Text,
+			},
+			"read_only_options": map[string]interface{}{
+				"report_link": "/report",
+			},
+		}
+		json.NewEncoder(w).Encode(response)
+	} else { // If id is a write
+		// Return title, text, public, read and write links, update and delete links
+		w.Header().Set("Content-type", "application/json")
+		response := map[string]interface{}{
+			"post_content": result,
+			"admin_options": map[string]interface{}{
+				"update_link": "/",
+				"delete_link": "/",
+			},
+		}
+		json.NewEncoder(w).Encode(response)
 	}
 
 }
