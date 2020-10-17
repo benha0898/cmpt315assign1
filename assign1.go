@@ -6,6 +6,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -94,7 +95,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 
 	posts := []post{}
 
-	// Build query string
+	// Start building query string
 	queryString := "Select title, read_id FROM posts WHERE public = 1 AND reported = 0"
 	args := []interface{}{}
 
@@ -107,13 +108,12 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	}
 	// Sorting by title
 	if sort, exists := urlQuery["sort"]; exists {
-		if strings.EqualFold(sort[0], "title") || strings.EqualFold(sort[0], "title_desc") {
-			queryString += fmt.Sprintf(" ORDER BY title")
-			if sort[0] == "title_desc" {
-				queryString += " DESC"
-			}
+		if strings.EqualFold(sort[0], "title") {
+			queryString += fmt.Sprintf("ORDER BY title")
+		} else if strings.EqualFold(sort[0], "title_desc") {
+			queryString += fmt.Sprintf("ORDER BY title DESC")
 		} else {
-			http.Error(w, "Invalid url query", 400)
+			http.Error(w, fmt.Sprintf("Invalid url query: %v\n", sort[0]), 400)
 			return
 		}
 	}
@@ -124,7 +124,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	if page, exists := urlQuery["page"]; exists {
 		if pageInt, err := strconv.Atoi(page[0]); err != nil {
 			fmt.Println(err)
-			http.Error(w, err.Error(), 400)
+			http.Error(w, fmt.Sprintf("Invalid url query: %v\n", page[0]), 400)
 			return
 		} else {
 			currentPage = pageInt
@@ -135,7 +135,9 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	queryString += ";"
 
 	err := db.Select(&posts, queryString, args...)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		fmt.Fprintf(w, "No results found\n")
+	} else if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -163,7 +165,10 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 		"results": posts,
 	}
 	// Encode posts into JSON
-	json.NewEncoder(w).Encode(envelope)
+	err = json.NewEncoder(w).Encode(envelope)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	}
 
 }
 
@@ -241,7 +246,7 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, "Bad request", 400)
+		http.Error(w, fmt.Sprintf("Invalid post id: %v\n", mux.Vars(r)["id"]), 400)
 		return
 	}
 
@@ -250,8 +255,10 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 	queryString := `SELECT title, text, public, read_id, write_id FROM posts where read_id = $1 or write_id = $1;`
 	err = db.Get(&result, queryString, id)
 
-	if err != nil {
-		http.Error(w, "Invalid post id", 400)
+	if err == sql.ErrNoRows {
+		fmt.Fprintf(w, "No post with id %d\n", id)
+	} else if err != nil {
+		http.Error(w, err.Error(), 400)
 		return
 	}
 
@@ -268,7 +275,10 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 				"report_link": "/report",
 			},
 		}
-		json.NewEncoder(w).Encode(response)
+		err := json.NewEncoder(w).Encode(response)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+		}
 	} else { // If id is a write
 		// Return title, text, public, read and write links, update and delete links
 		w.Header().Set("Content-type", "application/json")
@@ -279,7 +289,10 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 				"delete_link": "/",
 			},
 		}
-		json.NewEncoder(w).Encode(response)
+		err := json.NewEncoder(w).Encode(response)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+		}
 	}
 
 }
@@ -293,7 +306,7 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, "Bad request", 400)
+		http.Error(w, fmt.Sprintf("Invalid id: %v\n", mux.Vars(r)["id"]), 400)
 		return
 	}
 
