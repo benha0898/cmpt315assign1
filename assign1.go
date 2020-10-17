@@ -59,10 +59,10 @@ func main() {
 	// Create Routes
 	r.Path("/api/v1/posts").Methods("GET").HandlerFunc(getPosts)
 	r.Path("/api/v1/posts").Methods("POST").HandlerFunc(createPost)
-	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("GET").HandlerFunc(getPostById)
-	r.Path("/api/v1/posts/{id:[0-9]+}/report").Methods("POST").HandlerFunc(reportPost)
-	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("PUT").HandlerFunc(updatePost)
-	r.Path("/api/v1/posts/{id:[0-9]+}").Methods("DELETE").HandlerFunc(deletePost)
+	r.Path("/api/v1/posts/{id}").Methods("GET").HandlerFunc(getPostById)
+	r.Path("/api/v1/posts/{id}/report").Methods("POST").HandlerFunc(reportPost)
+	r.Path("/api/v1/posts/{id}").Methods("PUT").HandlerFunc(updatePost)
+	r.Path("/api/v1/posts/{id}").Methods("DELETE").HandlerFunc(deletePost)
 	r.PathPrefix("/").HandlerFunc(catchAllHandlerFunc)
 
 	fmt.Printf("listen to port %v...\n", httpPort)
@@ -78,11 +78,12 @@ func connectToDB() (*sqlx.DB, error) {
 
 // Log a request
 func logRequest(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%s %s\n", r.Method, r.RequestURI)
 	queryString := `INSERT INTO logs (method, uri) VALUES ($1, $2);`
 	_, err := db.Exec(queryString, r.Method, r.RequestURI)
 
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		fmt.Printf("Fail to log: %s\n", err.Error())
 		return
 	}
 }
@@ -109,11 +110,11 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	// Sorting by title
 	if sort, exists := urlQuery["sort"]; exists {
 		if strings.EqualFold(sort[0], "title") {
-			queryString += fmt.Sprintf("ORDER BY title")
+			queryString += fmt.Sprintf(" ORDER BY title")
 		} else if strings.EqualFold(sort[0], "title_desc") {
-			queryString += fmt.Sprintf("ORDER BY title DESC")
+			queryString += fmt.Sprintf(" ORDER BY title DESC")
 		} else {
-			http.Error(w, fmt.Sprintf("Invalid url query: %v\n", sort[0]), 400)
+			writeJSONResponse(w, fmt.Sprintf("Invalid query value: %v", sort[0]), 400)
 			return
 		}
 	}
@@ -123,8 +124,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 
 	if page, exists := urlQuery["page"]; exists {
 		if pageInt, err := strconv.Atoi(page[0]); err != nil {
-			fmt.Println(err)
-			http.Error(w, fmt.Sprintf("Invalid url query: %v\n", page[0]), 400)
+			writeJSONResponse(w, fmt.Sprintf("Invalid query value: %v", page[0]), 400)
 			return
 		} else {
 			currentPage = pageInt
@@ -135,40 +135,40 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	queryString += ";"
 
 	err := db.Select(&posts, queryString, args...)
-	if err == sql.ErrNoRows {
-		fmt.Fprintf(w, "No results found\n")
-	} else if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	if err != nil {
+		writeJSONResponse(w, http.StatusText(500), 500)
+		return
+	}
+	if len(posts) == 0 {
+		writeJSONResponse(w, "No results found", 200)
 		return
 	}
 
 	// Get specified page from posts
+	var pagePosts []post
 	firstOfPage := (currentPage - 1) * pageLimit // e.g. Page 1 starts from index 0
 	lastOfPage := currentPage * pageLimit        // e.g. Page 1 ends before index 20
 	if firstOfPage >= len(posts) {               // If first of page is beyond posts' range, return empty array
-		posts = []post{}
+		pagePosts = []post{}
 	} else if lastOfPage > len(posts) { // If last of page is beyond posts' range, only take up to last item
-		posts = posts[firstOfPage:]
+		pagePosts = posts[firstOfPage:]
 	} else {
-		posts = posts[firstOfPage:lastOfPage]
+		pagePosts = posts[firstOfPage:lastOfPage]
 	}
 
 	// Configure response
 	w.Header().Set("Content-type", "application/json")
-	envelope := map[string]interface{}{
+	response := map[string]interface{}{
+		"message": fmt.Sprintf("Showing %d of %d post(s) found", len(pagePosts), len(posts)),
 		"metadata": map[string]interface{}{
 			"total_count": len(posts),
 			"total_pages": int(math.Ceil(float64(len(posts)) / float64(pageLimit))),
 			"page":        currentPage,
 			"per_page":    pageLimit,
 		},
-		"results": posts,
+		"results": pagePosts,
 	}
-	// Encode posts into JSON
-	err = json.NewEncoder(w).Encode(envelope)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-	}
+	json.NewEncoder(w).Encode(response)
 
 }
 
@@ -185,7 +185,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&newPost)
 
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		writeJSONResponse(w, err.Error(), 400)
 		return
 	}
 
@@ -195,7 +195,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	queryString := "SELECT read_id FROM posts UNION SELECT write_id FROM posts ORDER BY read_id;"
 	err = db.Select(&existingIDs, queryString)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		writeJSONResponse(w, err.Error(), 500)
 		return
 	}
 	// Then, randomize until we have two new unique IDs
@@ -225,8 +225,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	result, err := db.Exec(queryString, newPost.Title, newPost.Text, newPost.Public, readID, writeID)
 
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, err.Error(), 500)
+		writeJSONResponse(w, err.Error(), 500)
 		return
 	}
 	rowsAffected, err := result.RowsAffected()
@@ -234,6 +233,23 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Printf("%d row(s) created.\n", rowsAffected)
+
+	// Send the post back to client
+	newPost.ReadID = readID
+	newPost.WriteID = writeID
+	w.Header().Set("Content-type", "application/json")
+	response := map[string]interface{}{
+		"message":      "New post created",
+		"post_content": newPost,
+		"admin_options": map[string]interface{}{
+			"update_link": fmt.Sprintf("/api/v1/posts/%d", writeID),
+			"delete_link": fmt.Sprintf("/api/v1/posts/%d", writeID),
+		},
+	}
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		writeJSONResponse(w, err.Error(), 500)
+	}
 }
 
 // Get a post by its read or write ID
@@ -246,7 +262,7 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid post id: %v\n", mux.Vars(r)["id"]), 400)
+		writeJSONResponse(w, fmt.Sprintf("Invalid post id: %v", mux.Vars(r)["id"]), 400)
 		return
 	}
 
@@ -256,9 +272,10 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 	err = db.Get(&result, queryString, id)
 
 	if err == sql.ErrNoRows {
-		fmt.Fprintf(w, "No post with id %d\n", id)
+		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
+		return
 	} else if err != nil {
-		http.Error(w, err.Error(), 400)
+		writeJSONResponse(w, err.Error(), 400)
 		return
 	}
 
@@ -267,31 +284,33 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 		// Return title, text, and report link
 		w.Header().Set("Content-type", "application/json")
 		response := map[string]interface{}{
+			"message": "Post found",
 			"post_content": map[string]interface{}{
 				"title": result.Title,
 				"text":  result.Text,
 			},
 			"read_only_options": map[string]interface{}{
-				"report_link": "/report",
+				"report_link": fmt.Sprintf("/api/v1/posts/%d/report", result.ReadID),
 			},
 		}
 		err := json.NewEncoder(w).Encode(response)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			writeJSONResponse(w, err.Error(), 500)
 		}
 	} else { // If id is a write
 		// Return title, text, public, read and write links, update and delete links
 		w.Header().Set("Content-type", "application/json")
 		response := map[string]interface{}{
+			"message":      "Post found",
 			"post_content": result,
 			"admin_options": map[string]interface{}{
-				"update_link": "/",
-				"delete_link": "/",
+				"update_link": fmt.Sprintf("/api/v1/posts/%d", result.WriteID),
+				"delete_link": fmt.Sprintf("/api/v1/posts/%d", result.WriteID),
 			},
 		}
 		err := json.NewEncoder(w).Encode(response)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			writeJSONResponse(w, err.Error(), 500)
 		}
 	}
 
@@ -306,7 +325,18 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid id: %v\n", mux.Vars(r)["id"]), 400)
+		writeJSONResponse(w, fmt.Sprintf("Invalid id: %v\n", mux.Vars(r)["id"]), 400)
+		return
+	}
+
+	// Check if id is valid
+	exists, idType := checkPostId(w, id)
+	if !exists {
+		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
+		return
+	}
+	if idType == "w" {
+		writeJSONResponse(w, "Invalid report uri", http.StatusBadRequest)
 		return
 	}
 
@@ -315,7 +345,7 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&reason)
 
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		writeJSONResponse(w, err.Error(), 400)
 		return
 	}
 
@@ -324,8 +354,7 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 	result, err := db.Exec(queryString, reason.reason, id)
 
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, err.Error(), 500)
+		writeJSONResponse(w, err.Error(), 500)
 		return
 	}
 	rowsAffected, err := result.RowsAffected()
@@ -344,7 +373,18 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, "Bad request", 400)
+		writeJSONResponse(w, fmt.Sprintf("Invalid id: %v\n", mux.Vars(r)["id"]), 400)
+		return
+	}
+
+	// Check if id is valid
+	exists, idType := checkPostId(w, id)
+	if !exists {
+		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
+		return
+	}
+	if idType == "r" {
+		writeJSONResponse(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -353,7 +393,7 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	err = json.NewDecoder(r.Body).Decode(&updatedPost)
 
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		writeJSONResponse(w, err.Error(), 400)
 		return
 	}
 
@@ -378,8 +418,7 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	// Execute query to update post
 	result, err := db.Exec(queryString, args...)
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, err.Error(), 500)
+		writeJSONResponse(w, err.Error(), 500)
 		return
 	}
 	rowsAffected, err := result.RowsAffected()
@@ -387,6 +426,29 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Printf("%d row(s) updated.\n", rowsAffected)
+
+	// Send the updated post back to client
+	queryString = `SELECT title, text, public, read_id, write_id FROM posts WHERE write_id = ?`
+	err = db.Get(&updatedPost, queryString, id)
+	if err != nil {
+		writeJSONResponse(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	response := map[string]interface{}{
+		"message":      "Post updated",
+		"post_content": updatedPost,
+		"admin_options": map[string]interface{}{
+			"update_link": "/",
+			"delete_link": "/",
+		},
+	}
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		writeJSONResponse(w, err.Error(), 500)
+		return
+	}
 }
 
 // Delete a Post
@@ -397,7 +459,18 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 	// Get id from path variables
 	id, err := strconv.Atoi(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, "Bad request", 400)
+		writeJSONResponse(w, fmt.Sprintf("Invalid id: %v\n", mux.Vars(r)["id"]), 400)
+		return
+	}
+
+	// Check if id is valid
+	exists, idType := checkPostId(w, id)
+	if !exists {
+		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
+		return
+	}
+	if idType == "r" {
+		writeJSONResponse(w, "Not authorized", http.StatusForbidden)
 		return
 	}
 
@@ -406,8 +479,7 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 	result, err := db.Exec(queryString, id)
 
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, err.Error(), 500)
+		writeJSONResponse(w, err.Error(), 500)
 		return
 	}
 	rowsAffected, err := result.RowsAffected()
@@ -415,12 +487,63 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Printf("%d row(s) deleted.\n", rowsAffected)
+
+	// Send a response body
+	w.Header().Set("Content-type", "application/json")
+	response := map[string]interface{}{
+		"message": "Post deleted",
+	}
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		writeJSONResponse(w, err.Error(), 500)
+		return
+	}
 }
 
+// Any request not supported will return a 404
 func catchAllHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	// Log request
 	logRequest(w, r)
 
-	http.Error(w, "Not Found", http.StatusNotFound)
+	writeJSONResponse(w, "Not Found", http.StatusNotFound)
 	return
+}
+
+// Check to see if a post exists
+// Returns a bool, and a string indicating if the id is a read or write
+func checkPostId(w http.ResponseWriter, id int) (bool, string) {
+	queryString := `SELECT read_id FROM posts where read_id = $1 or write_id = $1;`
+
+	var readResult int
+
+	err := db.Get(&readResult, queryString, id)
+
+	if err == sql.ErrNoRows {
+		// No post with this Id
+		return false, ""
+	} else if err != nil {
+		writeJSONResponse(w, err.Error(), 400)
+		return false, ""
+	} else if readResult == id {
+		// This id is a read
+		return true, "r"
+	} else {
+		// This id is a write
+		return true, "w"
+	}
+
+}
+
+// Write a response body with a status code
+func writeJSONResponse(w http.ResponseWriter, message string, code int) {
+	fmt.Println(message)
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(code)
+	response := map[string]interface{}{
+		"message": message,
+	}
+	err := json.NewEncoder(w).Encode(response)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

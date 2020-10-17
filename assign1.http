@@ -5,8 +5,8 @@ POST http://localhost:8123/api/v1/posts
 Content-type: application/json
 
 {
-"title": "my 7th post",
-"text": "this is my 7th post.",
+"title": "This is my title",
+"text": "This is my text",
 "public": true
 }
 
@@ -22,25 +22,45 @@ GET http://localhost:8123/api/v1/posts?sort=title
 # Get Posts with sorting in desc order
 GET http://localhost:8123/api/v1/posts?sort=title_desc
 
+# Invalid sort query
+GET http://localhost:8123/api/v1/posts?sort=123
+
 # Get Posts with pagination
 GET http://localhost:8123/api/v1/posts?page=2
 
+# Get Posts with no results
+GET http://localhost:8123/api/v1/posts?title=goodbye
+
 # Get Read-Only Link
-GET http://localhost:8123/api/v1/posts/8755
+GET http://localhost:8123/api/v1/posts/6783
 
 # Get Admin Link
-GET http://localhost:8123/api/v1/posts/791
+GET http://localhost:8123/api/v1/posts/486
+
+# Get link that doesn't exist
+GET http://localhost:8123/api/v1/posts/12345
+
+# Get link with invalid id
+GET http://localhost:8123/api/v1/posts/h1
 
 # Report a Post
-POST http://localhost:8123/api/v1/posts/8081/report
+POST http://localhost:8123/api/v1/posts/6783/report
 Content-type: application/json
 
 {
 "reason": "inappropriate content"
 }
 
+# Report a Post using a write id
+POST http://localhost:8123/api/v1/posts/486/report
+Content-type: application/json
+
+{
+"reason": "This is a read-only action, not an admin action."
+}
+
 # Update a Post with only title
-PUT http://localhost:8123/api/v1/posts/791
+PUT http://localhost:8123/api/v1/posts/486
 Content-type: application/json
 
 {
@@ -48,7 +68,7 @@ Content-type: application/json
 }
 
 # Update a Post with title, text, and public
-PUT http://localhost:8123/api/v1/posts/791
+PUT http://localhost:8123/api/v1/posts/486
 Content-type: application/json
 
 {
@@ -57,8 +77,20 @@ Content-type: application/json
 "public": false
 }
 
-# Delete a Post
-DELETE http://localhost:8123/api/v1/posts/791
+# Update a Post using Read-only link
+PUT http://localhost:8123/api/v1/posts/6783
+Content-type: application/json
 
-# Request Not Found
-GET http://localhost:8123/api/v1/posts/helloworld
+{
+"title": "I'm Not Authorized"
+}
+
+# Delete a Post
+DELETE http://localhost:8123/api/v1/posts/486
+
+# Delete a Post using Read-only link
+DELETE http://localhost:8123/api/v1/posts/6783
+
+
+# Request Not Found | Any request not supported by the API
+GET http://localhost:8123/api/v1/helloworld
