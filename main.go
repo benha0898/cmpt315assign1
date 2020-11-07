@@ -58,7 +58,7 @@ func main() {
 	// Create Routes
 	r.Path("/api/v1/posts").Methods("GET").HandlerFunc(getPosts)
 	r.Path("/api/v1/posts").Methods("POST").HandlerFunc(createPost)
-	r.Path("/api/v1/posts/{id}").Methods("GET").HandlerFunc(getPostById)
+	r.Path("/api/v1/posts/{id}").Methods("GET").HandlerFunc(getPostByID)
 	r.Path("/api/v1/posts/{id}/reports").Methods("POST").HandlerFunc(reportPost)
 	r.Path("/api/v1/posts/{id}").Methods("PUT").HandlerFunc(updatePost)
 	r.Path("/api/v1/posts/{id}").Methods("DELETE").HandlerFunc(deletePost)
@@ -250,7 +250,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 // Get a post by its read or write ID
 // If it's a read --> Return text, title, and report link
 // If it's a write --> Return text, title, public, read and write links, update and delete links
-func getPostById(w http.ResponseWriter, r *http.Request) {
+func getPostByID(w http.ResponseWriter, r *http.Request) {
 	// Log request
 	logRequest(w, r)
 
@@ -321,7 +321,7 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if id is valid
-	exists, idType := checkPostId(w, id)
+	exists, idType := checkPostID(w, id)
 	if !exists {
 		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
 		return
@@ -379,7 +379,7 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if id is valid
-	exists, idType := checkPostId(w, id)
+	exists, idType := checkPostID(w, id)
 	if !exists {
 		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
 		return
@@ -465,7 +465,7 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if id is valid
-	exists, idType := checkPostId(w, id)
+	exists, idType := checkPostID(w, id)
 	if !exists {
 		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
 		return
@@ -512,7 +512,7 @@ func catchAllHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 // Check to see if a post exists
 // Returns a bool, and a string indicating if the id is a read or write
-func checkPostId(w http.ResponseWriter, id int) (bool, string) {
+func checkPostID(w http.ResponseWriter, id int) (bool, string) {
 	queryString := `SELECT read_id FROM posts where read_id = $1 or write_id = $1;`
 
 	var readResult int
