@@ -26,14 +26,13 @@ import (
 
 // post represents the data stored in a post
 type post struct {
-	ID            int    `db:"-" json:"-"`
-	Title         string `db:"title" json:"title,omitempty"`
-	Text          string `db:"text,omitempty" json:"text,omitempty"`
-	Public        *bool  `db:"public,omitempty" json:"public,omitempty"`
-	ReadID        int    `db:"read_id" json:"read_id,omitempty"`
-	WriteID       int    `db:"write_id,omitempty" json:"write_id,omitempty"`
-	Reported      bool   `db:"-" json:"-"`
-	report_reason string `db:"-" json:"-"`
+	ID       int    `db:"-" json:"-"`
+	Title    string `db:"title" json:"title,omitempty"`
+	Text     string `db:"text,omitempty" json:"text,omitempty"`
+	Public   *bool  `db:"public,omitempty" json:"public,omitempty"`
+	ReadID   int    `db:"read_id" json:"read_id,omitempty"`
+	WriteID  int    `db:"write_id,omitempty" json:"write_id,omitempty"`
+	Reported bool   `db:"-" json:"-"`
 }
 
 var db *sqlx.DB
@@ -60,7 +59,7 @@ func main() {
 	r.Path("/api/v1/posts").Methods("GET").HandlerFunc(getPosts)
 	r.Path("/api/v1/posts").Methods("POST").HandlerFunc(createPost)
 	r.Path("/api/v1/posts/{id}").Methods("GET").HandlerFunc(getPostById)
-	r.Path("/api/v1/posts/{id}/report").Methods("POST").HandlerFunc(reportPost)
+	r.Path("/api/v1/posts/{id}/reports").Methods("POST").HandlerFunc(reportPost)
 	r.Path("/api/v1/posts/{id}").Methods("PUT").HandlerFunc(updatePost)
 	r.Path("/api/v1/posts/{id}").Methods("DELETE").HandlerFunc(deletePost)
 	r.PathPrefix("/").HandlerFunc(catchAllHandlerFunc)
@@ -71,7 +70,7 @@ func main() {
 
 // Connect to database
 func connectToDB() (*sqlx.DB, error) {
-	connectionString := "assign1.db?mode=column&_fk=true"
+	connectionString := "assign.db?mode=column&_fk=true"
 	database, err := sqlx.Open("sqlite3", connectionString)
 	return database, err
 }
@@ -241,10 +240,6 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"message":      "New post created",
 		"post_content": newPost,
-		"admin_options": map[string]interface{}{
-			"update_link": fmt.Sprintf("/api/v1/posts/%d", writeID),
-			"delete_link": fmt.Sprintf("/api/v1/posts/%d", writeID),
-		},
 	}
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
@@ -290,7 +285,7 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 				"text":  result.Text,
 			},
 			"read_only_options": map[string]interface{}{
-				"report_link": fmt.Sprintf("/api/v1/posts/%d/report", result.ReadID),
+				"report_link": "/reports",
 			},
 		}
 		err := json.NewEncoder(w).Encode(response)
@@ -303,10 +298,6 @@ func getPostById(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			"message":      "Post found",
 			"post_content": result,
-			"admin_options": map[string]interface{}{
-				"update_link": fmt.Sprintf("/api/v1/posts/%d", result.WriteID),
-				"delete_link": fmt.Sprintf("/api/v1/posts/%d", result.WriteID),
-			},
 		}
 		err := json.NewEncoder(w).Encode(response)
 		if err != nil {
@@ -341,7 +332,9 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decode the request's body to get report reason
-	var reason struct{ reason string }
+	var reason struct {
+		Reason string `json:"reason"`
+	}
 	err = json.NewDecoder(r.Body).Decode(&reason)
 
 	if err != nil {
@@ -349,19 +342,27 @@ func reportPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Add report reason to post, and set reported to true
-	queryString := `UPDATE posts SET reported = 1, report_reason = $1 WHERE read_id = $2`
-	result, err := db.Exec(queryString, reason.reason, id)
+	// Set post's reported value to true
+	queryString1 := `UPDATE posts SET reported = 1 WHERE read_id = $1;`
+	_, err = db.Exec(queryString1, id)
 
 	if err != nil {
 		writeJSONResponse(w, err.Error(), 500)
 		return
 	}
-	rowsAffected, err := result.RowsAffected()
+
+	// Create a report in the reports table
+	queryString2 := `
+	INSERT INTO reports (post_id, reason)
+	SELECT id, $1 FROM posts WHERE read_id = $2;`
+	fmt.Println(reason.Reason)
+	fmt.Println(id)
+	_, err = db.Exec(queryString2, reason.Reason, id)
+
 	if err != nil {
-		fmt.Println(err)
+		writeJSONResponse(w, err.Error(), 500)
+		return
 	}
-	fmt.Printf("%d row(s) updated.\n", rowsAffected)
 }
 
 // Update a Post

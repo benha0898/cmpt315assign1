@@ -44,7 +44,7 @@ GET http://localhost:8123/api/v1/posts/12345
 GET http://localhost:8123/api/v1/posts/h1
 
 # Report a Post
-POST http://localhost:8123/api/v1/posts/6783/report
+POST http://localhost:8123/api/v1/posts/6772/reports
 Content-type: application/json
 
 {
@@ -52,7 +52,7 @@ Content-type: application/json
 }
 
 # Report a Post using a write id
-POST http://localhost:8123/api/v1/posts/486/report
+POST http://localhost:8123/api/v1/posts/486/reports
 Content-type: application/json
 
 {
