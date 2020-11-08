@@ -32,7 +32,7 @@ GET http://localhost:8123/api/v1/posts?page=2
 GET http://localhost:8123/api/v1/posts?title=goodbye
 
 # Get Read-Only Link
-GET http://localhost:8123/api/v1/posts/6783
+GET http://localhost:8123/api/v1/posts/5023
 
 # Get Admin Link
 GET http://localhost:8123/api/v1/posts/486

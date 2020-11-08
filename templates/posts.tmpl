@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="/styles.css">
+
+    <title>All Posts</title>
+
+    <script type="text/x-dot-template" id="posts-template">
+        {{?it.results instanceof Array && it.results.length > 0}}
+        {{
+            var m = it.metadata;
+            var startPost = m.perPage * (m.page - 1) + 1;
+            var endPost = startPost + m.totalShowing - 1;
+        }}
+        <div class="row">
+            <div class="col-12">viewing posts {{=startPost}}-{{=endPost}} from {{=m.totalCount}} post(s)</div>
+        </div>
+        {{~it.results :value}}
+        <div class="row">
+            <div class="col-12"><a href="/posts/{{=value.readId}}">{{=value.title}}</a></div>
+        </div>
+        {{~}}
+        {{??}}
+        <p>No posts found</p>
+        {{?}}			
+    </script>
+</head>
+<body>
+    <header>
+        <h1><a href="/"><span class="red">Text</span><span class="green">Share</span></a></h1>
+    </header>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-8 border">
+                <div class="row">
+                    <div class="col-12">
+                        <h3>All Public Posts</h3>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12" id="posts"></div>
+                </div>
+                <div class="row">
+                    <button class="red-btn col-2" id="previous-page-btn">Previous Page</button>
+                    <button class="green-btn col-2" id="next-page-btn">Next Page</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="doT.js"></script>
+    <script src="posts.js"></script>
+
+</body>
+</html>

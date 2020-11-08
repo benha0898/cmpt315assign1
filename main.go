@@ -9,11 +9,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"math"
 	"math/rand"
 	"net/http"
 	"os"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,8 +32,8 @@ type post struct {
 	Title    string `db:"title" json:"title,omitempty"`
 	Text     string `db:"text,omitempty" json:"text,omitempty"`
 	Public   *bool  `db:"public,omitempty" json:"public,omitempty"`
-	ReadID   int    `db:"read_id" json:"read_id,omitempty"`
-	WriteID  int    `db:"write_id,omitempty" json:"write_id,omitempty"`
+	ReadID   int    `db:"read_id" json:"readId,omitempty"`
+	WriteID  int    `db:"write_id,omitempty" json:"writeId,omitempty"`
 	Reported bool   `db:"-" json:"-"`
 }
 
@@ -55,14 +57,19 @@ func main() {
 	r := mux.NewRouter()
 	httpPort := 8123
 
-	// Create Routes
+	// Create API Routes
 	r.Path("/api/v1/posts").Methods("GET").HandlerFunc(getPosts)
 	r.Path("/api/v1/posts").Methods("POST").HandlerFunc(createPost)
 	r.Path("/api/v1/posts/{id}").Methods("GET").HandlerFunc(getPostByID)
 	r.Path("/api/v1/posts/{id}/reports").Methods("POST").HandlerFunc(reportPost)
 	r.Path("/api/v1/posts/{id}").Methods("PUT").HandlerFunc(updatePost)
 	r.Path("/api/v1/posts/{id}").Methods("DELETE").HandlerFunc(deletePost)
-	r.PathPrefix("/").HandlerFunc(catchAllHandlerFunc)
+
+	// Create Page Routes
+	fileServer := http.FileServer(http.Dir("./dist"))
+	r.PathPrefix("/posts/{id}").Methods("GET").HandlerFunc(getPostByIDPage)
+	r.PathPrefix("/posts").Methods("GET").HandlerFunc(getPostsPage)
+	r.PathPrefix("/").Methods("GET").Handler(fileServer)
 
 	fmt.Printf("listen to port %v...\n", httpPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpPort), r))
@@ -160,10 +167,11 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"message": fmt.Sprintf("Showing %d of %d post(s) found", len(pagePosts), len(posts)),
 		"metadata": map[string]interface{}{
-			"total_count": len(posts),
-			"total_pages": int(math.Ceil(float64(len(posts)) / float64(pageLimit))),
-			"page":        currentPage,
-			"per_page":    pageLimit,
+			"totalShowing": len(pagePosts),
+			"totalCount":   len(posts),
+			"totalPages":   int(math.Ceil(float64(len(posts)) / float64(pageLimit))),
+			"page":         currentPage,
+			"perPage":      pageLimit,
 		},
 		"results": pagePosts,
 	}
@@ -238,8 +246,8 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	newPost.WriteID = writeID
 	w.Header().Set("Content-type", "application/json")
 	response := map[string]interface{}{
-		"message":      "New post created",
-		"post_content": newPost,
+		"message":     "New post created",
+		"postContent": newPost,
 	}
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
@@ -280,12 +288,12 @@ func getPostByID(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-type", "application/json")
 		response := map[string]interface{}{
 			"message": "Post found",
-			"post_content": map[string]interface{}{
+			"postContent": map[string]interface{}{
 				"title": result.Title,
 				"text":  result.Text,
 			},
-			"read_only_options": map[string]interface{}{
-				"report_link": "/reports",
+			"readOnlyOptions": map[string]interface{}{
+				"reportLink": "/reports",
 			},
 		}
 		err := json.NewEncoder(w).Encode(response)
@@ -296,8 +304,8 @@ func getPostByID(w http.ResponseWriter, r *http.Request) {
 		// Return title, text, public, read and write links, update and delete links
 		w.Header().Set("Content-type", "application/json")
 		response := map[string]interface{}{
-			"message":      "Post found",
-			"post_content": result,
+			"message":     "Post found",
+			"postContent": result,
 		}
 		err := json.NewEncoder(w).Encode(response)
 		if err != nil {
@@ -438,11 +446,11 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-type", "application/json")
 	response := map[string]interface{}{
-		"message":      "Post updated",
-		"post_content": updatedPost,
-		"admin_options": map[string]interface{}{
-			"update_link": "/",
-			"delete_link": "/",
+		"message":     "Post updated",
+		"postContent": updatedPost,
+		"adminOptions": map[string]interface{}{
+			"updateLink": "/",
+			"deleteLink": "/",
 		},
 	}
 	err = json.NewEncoder(w).Encode(response)
@@ -499,6 +507,57 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 		writeJSONResponse(w, err.Error(), 500)
 		return
 	}
+}
+
+// Execute the template for the Posts page
+func getPostsPage(w http.ResponseWriter, r *http.Request) {
+	fs := http.FileServer(http.Dir("./dist"))
+	if ext := path.Ext(r.URL.Path); ext == "" {
+		r.URL.Path += ".html"
+	}
+	fs.ServeHTTP(w, r)
+}
+
+func getPostByIDPage(w http.ResponseWriter, r *http.Request) {
+	// Get id from path variables
+	id, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		writeJSONResponse(w, fmt.Sprintf("Invalid post id: %v", mux.Vars(r)["id"]), 400)
+		return
+	}
+
+	// Find id
+	var result post
+	queryString := `SELECT title, text, public, read_id, write_id FROM posts where read_id = $1 or write_id = $1;`
+	err = db.Get(&result, queryString, id)
+
+	if err == sql.ErrNoRows {
+		writeJSONResponse(w, fmt.Sprintf("No post with id %d", id), http.StatusNotFound)
+		return
+	} else if err != nil {
+		writeJSONResponse(w, err.Error(), 400)
+		return
+	}
+
+	// If id is read-only, use read-only.tmpl
+	if id == result.ReadID {
+		tmpl := template.Must(template.New("read-only.tmpl").ParseFiles("templates/read-only.tmpl"))
+		err = tmpl.Execute(w, result)
+		if err != nil {
+			writeJSONResponse(w, err.Error(), 500)
+			return
+		}
+	} else {
+		tmpl := template.Must(template.New("admin.tmpl").Funcs(template.FuncMap{
+			"Deref": func(i *bool) bool { return *i },
+		}).ParseFiles("templates/admin.tmpl"))
+		err = tmpl.Execute(w, result)
+		if err != nil {
+			writeJSONResponse(w, err.Error(), 500)
+			return
+		}
+	}
+
 }
 
 // Any request not supported will return a 404

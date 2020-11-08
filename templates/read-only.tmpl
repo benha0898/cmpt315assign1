@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="/styles.css">
+
+    <title>Read Post -- {{.ReadID}}</title>
+</head>
+<body>
+    <header>
+        <h1><a href="/"><span class="red">Text</span><span class="green">Share</span></a></h1>
+    </header>
+
+    <div class="container border">
+        <div class="row">
+            <div class="col-12">
+                <h3><strong>Read-Only Mode</strong></h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 title-border">{{.Title}}</div>
+        </div>
+        <div class="row">
+            <div class="col-12 content-border">{{.Text}}</div>
+        </div>
+        <div class="row">
+            <button class="red-btn col-4" id="report-btn">Report</button>
+        </div>
+        <div class="row">
+            <div class="col-12" id="report-form"></div>
+        </div>
+    </div>
+
+    <script type="text/x-dot-template" id="report-form-template">
+        <div class="row">
+            <div class="col-12">
+                <div class="row">
+                    <div class="col-12">
+                        <h4 class="red">Report Post</h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <input type="radio" id="1" name="report-reason" value="Offensive content">
+                        <label for="1">Offensive content</label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <input type="radio" id="2" name="report-reason" value="Contains illegal content or activity">
+                        <label for="2">Contains illegal content or activity</label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <input type="radio" id="3" name="report-reason" value="Goes against my beliefs, values or politics">
+                        <label for="3">Goes against my beliefs, values or politics</label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <input type="radio" id="4" name="report-reason" value="Spreading misinformation">
+                        <label for="4">Spreading misinformation</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <button class="red-btn col-4" id="report-submit-btn">Send Report</button>
+        </div>
+    </script>
+    <script src="/doT.js"></script>
+    <script src="/report.js"></script>
+    
+</body>
+</html>

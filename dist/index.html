@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="normalize.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css">
+
+    <script type="text/x-dot-template" id="recent-posts-template">
+        {{?it.results instanceof Array && it.results.length > 0}}
+        {{~it.results : value}}
+        <div class="row">
+            <div class="col-12"><a href="/posts/{{=value.readId}}">{{=value.title}}</a></div>
+        </div>
+        {{~}}
+        {{?}}
+    </script>
+
+    <title>TextShare</title>
+</head>
+<body>
+    <header>
+        <h1><a href="/"><span class="red">Text</span><span class="green">Share</span></a></h1>
+    </header>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-8 border">
+                <div class="row">
+                    <div class="col-12">
+                        <h3>Create New Post</h3>
+                    </div>
+                </div>
+                <div class="row my-form-row">
+                    <div class="col-3">Post Title:</div>
+                    <input class="col-9" type="text" id="title-input" name="title" placeholder="Enter title">
+                </div>
+                <div class="row my-form-row">
+                    <div class="col-3">Post Content:</div>
+                    <textarea class="col-9" rows="10" id="content-input" name="content" placeholder="Enter/Paste your text here"></textarea>
+                </div>
+                <div class="row my-form-row">
+                    <div class="col-3">Make Post Public:</div>
+                    <input type="checkbox" id="public-input">
+                </div>
+                <div class="row">
+                    <button class="red-btn col-10" id="submit-btn">Submit</button>
+                </div>
+            </div>
+            <div class="col-4 border">
+                <div class="row">
+                    <div class="col-12">
+                        <h3>Most Recent Public Posts</h3>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12" id="recent-posts"></div>
+                </div>
+                <div class="row">
+                    <button class="green-btn col-9" id="get-posts-btn">See all posts</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="doT.js"></script>
+    <script src="index.js"></script>
+    
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="/styles.css">
+
+    <title>Admin Mode -- {{.WriteID}}</title>
+</head>
+<body>
+    <header>
+        <h1><a href="/"><span class="red">Text</span><span class="green">Share</span></a></h1>
+    </header>
+
+    <div class="container border" id="admin-container">
+        <div class="row">
+            <div class="col-12">
+                <h3><strong>Admin Mode</strong></h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 title-border">{{.Title}}</div>
+        </div>
+        <div class="row">
+            <div class="col-12 content-border" id="post-content">{{.Text}}</div>
+        </div>
+        <div class="row">
+            <div class="col-1 black-tag">{{if (Deref .Public)}}Public{{else}}Private{{end}}</div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <p><strong>Admin link:</strong> localhost:8123/posts/{{.WriteID}}</p>
+                <p><strong>Read-only link:</strong> localhost:8123/posts/{{.ReadID}}</p>
+            </div>
+        </div>
+        <div class="row">
+            <button class="green-btn col-4" id="edit-btn">Edit</button>
+            <button class="red-btn col-4" id="delete-btn">Delete</button>
+        </div>
+    </div>
+
+    <script type="text/x-dot-template" id="edit-form-template">
+        <div class="row">
+            <div class="col-12">
+                <h3><strong>Admin Mode</strong> - Edit Post</h3>
+            </div>
+        </div>
+        <div class="row my-form-row">
+            <div class="col-3">Post Title:</div>
+            <input class="col-9" type="text" id="title-input" name="title" value="{{.Title}}">
+        </div>
+        <div class="row my-form-row">
+            <div class="col-3">Post Content:</div>
+            <textarea class="col-9" rows="10" id="content-input" name="content" value="{{.Text}}"></textarea>
+        </div>
+        <div class="row my-form-row">
+            <div class="col-3">Make Post Public:</div>
+            <input type="checkbox" id="public-input" checked={{Deref .Public}}>
+        </div>
+        <div class="row">
+            <button class="red-btn col-7" id="save-changes-btn">Save changes</button>
+        </div>
+    </script>
+    
+    <script src="/doT.js"></script>
+    <script src="/admin.js"></script>
+    
+</body>
+</html>
