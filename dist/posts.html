@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="normalize.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Work+Sans&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="styles.css">
 
-    <title>All Posts</title>
+    <title>TextShare</title>
 
     <script type="text/x-dot-template" id="posts-template">
         {{?it.results instanceof Array && it.results.length > 0}}
@@ -20,11 +20,11 @@
             var endPost = startPost + m.totalShowing - 1;
         }}
         <div class="row">
-            <div class="col-12">viewing posts {{=startPost}}-{{=endPost}} from {{=m.totalCount}} post(s)</div>
+            <div class="col-12 text-center">viewing posts {{=startPost}}-{{=endPost}} from {{=m.totalCount}} post(s)</div>
         </div>
         {{~it.results :value}}
-        <div class="row">
-            <div class="col-12"><a href="/posts/{{=value.readId}}">{{=value.title}}</a></div>
+        <div class="row d-flex justify-content-center post-item">
+            <div class="col-11"><a href="/posts/{{=value.readId}}">{{=value.title}}</a></div>
         </div>
         {{~}}
         {{??}}
@@ -39,7 +39,7 @@
 
     <div class="container">
         <div class="row">
-            <div class="col-8 my-border">
+            <div class="col-12 my-border">
                 <div class="row">
                     <div class="col-11 header">
                         <h3>All Public Posts</h3>
@@ -49,9 +49,14 @@
                     <div class="col-12" id="posts"></div>
                 </div>
                 <div class="row">
-                    <button class="red-btn col-2" id="previous-page-btn">Previous Page</button>
-                    <button class="green-btn col-2" id="next-page-btn">Next Page</button>
+                    <div class="col-2 offset-4">
+                        <button class="red-btn col-12" id="previous-page-btn">Previous Page</button>
+                    </div>
+                    <div class="col-2">
+                        <button class="green-btn col-12" id="next-page-btn">Next Page</button>
+                    </div>
                 </div>
+                
             </div>
         </div>
     </div>

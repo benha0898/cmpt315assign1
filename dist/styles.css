@@ -1,23 +1,176 @@
-.red {
+body {
+    font-family: 'Work Sans', sans-serif;
+}
 
+.red {
+    color: #DA4167;
 }
 
 .green {
+    color: #246A73;
+}
 
+h1 {
+    font-weight: 700;
+    text-align: center;
+}
+
+h1 a:hover {
+    text-decoration: none;
+}
+
+h3 {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 10px 0;
+    margin: 0 auto;
+}
+
+.header {
+    margin: 0 auto;
+    margin-bottom: 10px;
+    border-bottom: 3px solid black;
 }
 
 .red-btn {
-
+    background-color: white;
+    border: 3px solid #DA4167;
+    border-radius: 25px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    color: #DA4167;
+    font-weight: 700;
+}
+.red-btn:hover:enabled {
+    background-color: #DA4167;
+    color: white;
 }
 
 .green-btn {
-
+    background-color: white;
+    border: 3px solid #246A73;
+    border-radius: 25px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    color: #246A73;
+    font-weight: 700;
+}
+.green-btn:hover:enabled {
+    background-color: #246A73;
+    color: white;
 }
 
-.border {
 
+.my-border {
+    border: 3px solid black;
+    border-radius: 10px;
 }
 
 .my-form-row {
+    margin: 10px auto;
+}
 
+.my-form-row > div {
+    font-weight: 600;
+    padding: 0;
+    padding-top: 5px;
+}
+
+input, textarea {
+    margin: auto 0;
+    padding: 5px 0;
+    border: 2px solid black;
+    border-radius: 10px;
+}
+input:focus, textarea:focus {
+    outline: none !important;
+    border: 3px solid #DA4167;
+}
+
+input[type='checkbox'] {
+    -webkit-appearance:none;
+    width:20px;
+    height:20px;
+    border:2px solid black;
+    border-radius:50%;
+    outline:none;
+    margin-top: 5px;
+}
+input[type='checkbox']:hover {
+    border: 3px solid #DA4167;
+}
+input[type='checkbox']:checked {
+    background-color: #DA4167;
+    border: 2px solid black;
+}
+
+textarea {
+    resize: none;
+}
+
+#recent-posts a {
+    font-size: 18px;
+    color: #246A73;
+}
+.post-item a {
+    font-size: 18px;
+    color: #246A73;
+}
+#recent-posts a:hover {
+    font-weight: 600;
+}
+.post-item a:hover {
+    font-weight: 600;
+}
+#recent-posts > div {
+    margin: 10px 0;
+    margin-bottom: 20px;
+}
+.post-item {
+    margin: 10px 0;
+    margin-bottom: 20px;
+}
+#recent-posts > div:last-child {
+    margin-bottom: 10px;
+}
+.post-item:last-child {
+    margin-bottom: 10px;
+}
+
+.title-border, .content-border {
+    margin: 10px auto;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    border: 2px solid black;
+    border-radius: 5px;
+}
+
+.content-border {
+    height: 200px;
+}
+
+.black-tag {
+    background-color: black;
+    color: white;
+    border-radius: 20px;
+    text-align: center;
+    padding: 5px 0px;
+    max-width: 10%;
+}
+
+.center {
+    margin: 10px auto;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.red-btn:disabled, .green-btn:disabled {
+    border-color: grey;
+    color: grey;
+    
 }

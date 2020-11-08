@@ -126,7 +126,7 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	}
 	// Pagination
 	currentPage := 1
-	pageLimit := 20
+	pageLimit := 6
 
 	if page, exists := urlQuery["page"]; exists {
 		if pageInt, err := strconv.Atoi(page[0]); err != nil {
@@ -515,6 +515,7 @@ func getPostsPage(w http.ResponseWriter, r *http.Request) {
 	if ext := path.Ext(r.URL.Path); ext == "" {
 		r.URL.Path += ".html"
 	}
+	fmt.Println(r.URL.Path)
 	fs.ServeHTTP(w, r)
 }
 
